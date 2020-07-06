@@ -29,12 +29,20 @@ module Decidim
       attr_reader :form
 
       def close_debate
-        @debate = Decidim.traceability.update!(
-          form.debate,
-          form.current_user,
-          attributes,
-          visibility: "public-only"
-        )
+          @debate = Decidim.traceability.perform_action!(
+            :close,
+            form.debate,
+            form.current_user
+          ) do
+            form.debate.update!(attributes)
+          end
+
+          Decidim::EventsManager.publish(
+            event: "decidim.events.debates.debate_closed",
+            event_class: Decidim::Debates::CloseDebateEvent,
+            resource: debate,
+            followers: debate.followers
+          )
       end
 
       def attributes
